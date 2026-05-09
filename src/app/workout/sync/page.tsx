@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   downloadWorkoutData,
   importWorkoutData,
@@ -14,7 +15,15 @@ export default function SyncPage() {
   const [importResult, setImportResult] = useState<{ success: boolean; message: string; importedCount: number } | null>(null);
   const [syncCode, setSyncCode] = useState<string>("");
   const [generatedSyncCode, setGeneratedSyncCode] = useState<string>("");
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{
+    totalWorkouts: number;
+    totalExercises: number;
+    totalCalories: number;
+    totalMeasurements: number;
+    hasGoals: boolean;
+    dateRange: { earliest: Date; latest: Date } | null;
+    dataSize: number;
+  } | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
 
   useEffect(() => {
@@ -153,9 +162,11 @@ export default function SyncPage() {
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-medium text-gray-900 mb-2">Sync Code Generated</h3>
                 <div className="text-center mb-4">
-                  <img
+                  <Image
                     src={generateQRCodeURL(generatedSyncCode)}
                     alt="QR Code"
+                    width={200}
+                    height={200}
                     className="mx-auto mb-2"
                   />
                   <p className="text-xs text-gray-600">Scan with your other device</p>
@@ -246,7 +257,7 @@ export default function SyncPage() {
             <div>
               <h3 className="font-medium text-gray-900">Method 1: JSON File</h3>
               <ol className="list-decimal list-inside mt-1 space-y-1">
-                <li>Click "Download JSON File" on your current device</li>
+                <li>Click &quot;Download JSON File&quot; on your current device</li>
                 <li>Transfer the file to your new device (email, cloud storage, etc.)</li>
                 <li>On the new device, open this sync page and upload the file</li>
               </ol>
@@ -254,7 +265,7 @@ export default function SyncPage() {
             <div>
               <h3 className="font-medium text-gray-900">Method 2: Sync Code</h3>
               <ol className="list-decimal list-inside mt-1 space-y-1">
-                <li>Click "Generate Sync Code" on your current device</li>
+                <li>Click &quot;Generate Sync Code&quot; on your current device</li>
                 <li>Copy the code or scan the QR code with your new device</li>
                 <li>Paste the code in the import section on your new device</li>
               </ol>

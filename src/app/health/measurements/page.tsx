@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,7 +14,7 @@ import {
 } from "chart.js";
 import { BodyMeasurement } from "../../types";
 import { getMeasurements, saveMeasurement, getLatestMeasurement, updateMeasurement, deleteMeasurement } from "../utils/storage";
-import { calculateBMR, calculateTDEE, getActivityLevelLabel } from "../utils/bmr";
+import { calculateBMR, calculateTDEE } from "../utils/bmr";
 
 ChartJS.register(
   CategoryScale,

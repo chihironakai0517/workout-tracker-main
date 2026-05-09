@@ -68,7 +68,7 @@ export default function Timer({ onClose, duration = 600 }: TimerProps) {
 
   const playNotificationSound = () => {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -84,8 +84,8 @@ export default function Timer({ onClose, duration = 600 }: TimerProps) {
 
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (error) {
-      console.log('Audio notification not supported');
+    } catch (audioError) {
+      console.log('Audio notification not supported:', audioError);
     }
   };
 
@@ -100,8 +100,8 @@ export default function Timer({ onClose, duration = 600 }: TimerProps) {
         // Fallback: try a simpler pattern
         try {
           navigator.vibrate(1000);
-        } catch (fallbackError) {
-          console.log('Fallback vibration also failed');
+        } catch (fallbackVibrationError) {
+          console.log('Fallback vibration also failed:', fallbackVibrationError);
         }
       }
     } else {

@@ -28,7 +28,7 @@ export default function MealTracker() {
   const [currentDate, setCurrentDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dailyData, setDailyData] = useState<DailyMeal | null>(null);
   const [goals, setGoals] = useState<HealthGoals | null>(null);
-  const [latestMeasurement, setLatestMeasurement] = useState<any>(null);
+  const [latestMeasurement, setLatestMeasurement] = useState<BodyMeasurement | null>(null);
   const [newMeal, setNewMeal] = useState<Omit<Meal, 'id' | 'date'>>({
     name: "",
     mealType: "Breakfast",
@@ -42,7 +42,7 @@ export default function MealTracker() {
   useEffect(() => {
     const data = getDailyMeal(currentDate);
     setDailyData(data);
-    
+
     const currentGoals = getGoals();
     setGoals(currentGoals);
 
@@ -104,7 +104,7 @@ export default function MealTracker() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof Omit<Meal, 'id' | 'date'>) => {
     const value = field === 'time' ? e.target.value : parseInt(e.target.value) || 0;
     const updatedMeal = { ...newMeal, [field]: value };
-    
+
     if (field === 'protein' || field === 'carbs' || field === 'fat') {
       updatedMeal.calories = calculateCaloriesFromMacros(
         field === 'protein' ? value as number : newMeal.protein,
@@ -112,7 +112,7 @@ export default function MealTracker() {
         field === 'fat' ? value as number : newMeal.fat
       );
     }
-    
+
     setNewMeal(updatedMeal);
   };
 
@@ -139,7 +139,7 @@ export default function MealTracker() {
   }) => {
     const progress = calculateProgress(current, target);
     const progressColor = getProgressColor(progress);
-    
+
     return (
       <div className="mb-4">
         <div className="flex justify-between text-sm mb-1">
@@ -172,7 +172,7 @@ export default function MealTracker() {
           Back
         </Link>
       </div>
-      
+
       <div className="mt-4">
         <Input
           type="date"
@@ -325,11 +325,11 @@ export default function MealTracker() {
                   onChange={(e) => handleWaterIntakeChange(e.target.value)}
                 />
               </div>
-              
+
               {latestMeasurement && latestMeasurement.bmr && latestMeasurement.activityLevel ? (
                 <div className="pt-4 border-t">
                   <h3 className="font-semibold mb-3">Daily Calorie Balance</h3>
-                  
+
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span>Daily Calorie Burn (TDEE):</span>
@@ -337,18 +337,18 @@ export default function MealTracker() {
                         {calculateTDEE(latestMeasurement.bmr, latestMeasurement.activityLevel)} kcal
                       </span>
                     </div>
-                    
+
                     <div className="flex justify-between text-sm">
                       <span>Calories Consumed:</span>
                       <span className="font-medium">{dailyData?.totalCalories || 0} kcal</span>
                     </div>
-                    
+
                     <div className="border-t pt-2">
                       <div className="flex justify-between text-sm font-semibold">
                         <span>Calorie Balance:</span>
                         <span className={
                           ((dailyData?.totalCalories || 0) - calculateTDEE(latestMeasurement.bmr, latestMeasurement.activityLevel)) > 0
-                            ? "text-red-600" 
+                            ? "text-red-600"
                             : "text-green-600"
                         }>
                           {((dailyData?.totalCalories || 0) - calculateTDEE(latestMeasurement.bmr, latestMeasurement.activityLevel)) > 0 ? "+" : ""}
@@ -366,13 +366,13 @@ export default function MealTracker() {
                     <div className="mt-4">
                       <h4 className="font-medium text-sm mb-2">Visual Balance</h4>
                       <div className="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="absolute left-0 top-0 h-full bg-orange-400 transition-all duration-300"
-                          style={{ 
+                          style={{
                             width: Math.min(
-                              ((dailyData?.totalCalories || 0) / calculateTDEE(latestMeasurement.bmr, latestMeasurement.activityLevel)) * 100, 
+                              ((dailyData?.totalCalories || 0) / calculateTDEE(latestMeasurement.bmr, latestMeasurement.activityLevel)) * 100,
                               100
-                            ) + "%" 
+                            ) + "%"
                           }}
                         ></div>
                         <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-700">
@@ -423,7 +423,7 @@ export default function MealTracker() {
                   <p className="text-sm text-gray-500">{meal.time}</p>
                   <p className="text-sm">
                     {meal.calories} cal | {meal.protein}g protein | {meal.fat}g fat | {meal.carbs}g
-                    carbs 
+                    carbs
                   </p>
                 </div>
                 <Button
@@ -439,4 +439,4 @@ export default function MealTracker() {
       </Card>
     </div>
   );
-} 
+}

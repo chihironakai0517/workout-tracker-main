@@ -12,7 +12,10 @@ import {
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TooltipItem,
+  LegendItem,
+  ChartData
 } from "chart.js";
 import { WeeklySummary, MonthlySummary, BodyMeasurement, HealthGoals } from "../../types";
 import { getWeeklySummary, getMonthlySummary, getMeasurements, getGoals } from "../utils/storage";
@@ -150,8 +153,8 @@ export default function Summary() {
 
       tooltip: {
         callbacks: {
-          label: (context: any) => {
-            const label = context.dataset.label;
+          label: (context: TooltipItem<'line'>) => {
+            const label = context.dataset.label || '';
             const value = context.parsed.y;
             if (label.includes("Weight")) {
               return `${label}: ${value} kg`;
@@ -286,9 +289,9 @@ export default function Summary() {
       legend: {
         position: "top" as const,
         labels: {
-          filter: function(legendItem: any, chartData: any) {
+          filter: function(legendItem: LegendItem, chartData: ChartData) {
             // Show only unique labels (remove duplicate "Actual" and "Goal")
-            const labels = chartData.datasets.map((dataset: any) => dataset.label);
+            const labels = chartData.datasets.map((dataset) => dataset.label || '');
             return labels.indexOf(legendItem.text) === legendItem.datasetIndex ||
                    (legendItem.text === "Actual" && legendItem.datasetIndex === 0) ||
                    (legendItem.text === "Goal" && legendItem.datasetIndex === 2);
@@ -296,16 +299,16 @@ export default function Summary() {
         }
       },
       tooltip: {
-        filter: function(tooltipItem: any) {
+        filter: function(tooltipItem: TooltipItem) {
           // Skip null values
           return tooltipItem.parsed.y !== null;
         },
         callbacks: {
-          title: function(tooltipItems: any[]) {
+          title: function(tooltipItems: TooltipItem[]) {
             return tooltipItems[0]?.label || '';
           },
-          label: (context: any) => {
-            const label = context.dataset.label;
+          label: (context: TooltipItem) => {
+            const label = context.dataset.label || '';
             const value = context.parsed.y;
             const dataIndex = context.dataIndex;
 

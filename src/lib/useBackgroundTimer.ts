@@ -85,7 +85,7 @@ export function useBackgroundTimer({
           case 'TIMER_SYNC':
             // Sync timer state from Service Worker
             const timerData = event.data.timers.find(
-              ([id]: [string, any]) => id === timerId.current
+              ([id]: [string, TimerState]) => id === timerId.current
             );
             if (timerData) {
               const [, timer] = timerData;

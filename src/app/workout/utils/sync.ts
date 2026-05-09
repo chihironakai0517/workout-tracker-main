@@ -1,5 +1,5 @@
 import { WorkoutHistory } from '../types';
-import { getWorkouts, saveWorkout } from './storage';
+import { getWorkouts } from './storage';
 import { getMeasurements, getGoals } from '../../health/utils/storage';
 
 // エクスポート/インポート機能
@@ -89,7 +89,8 @@ export const importWorkoutData = (jsonData: string): { success: boolean; message
       message: `Successfully imported ${importedCount} new items (workouts, measurements, goals)`,
       importedCount
     };
-  } catch (error) {
+  } catch (parseError) {
+    console.error('Import error:', parseError);
     return {
       success: false,
       message: 'Failed to parse JSON data',
@@ -126,7 +127,8 @@ export const importFromSyncCode = (syncCode: string): { success: boolean; messag
     };
 
     return importWorkoutData(JSON.stringify(fullData));
-  } catch (error) {
+  } catch (decodeError) {
+    console.error('Sync code decode error:', decodeError);
     return {
       success: false,
       message: 'Invalid sync code',

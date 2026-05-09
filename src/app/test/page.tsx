@@ -62,7 +62,7 @@ export default function TestPage() {
           <li>Click on either timer to start it</li>
           <li>Switch to another tab or minimize the browser</li>
           <li>The timer will continue running in the background</li>
-          <li>You'll get a notification when the timer completes</li>
+          <li>You&apos;ll get a notification when the timer completes</li>
           <li>The document title will show the remaining time</li>
           <li>Return to this tab to see the timer controls</li>
         </ul>

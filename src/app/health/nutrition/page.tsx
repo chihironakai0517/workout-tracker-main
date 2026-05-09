@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, ChangeEvent } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Card,
@@ -217,4 +217,4 @@ export default function NutritionTracker() {
       </Card>
     </div>
   );
-} 
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getExercisePresets, DEFAULT_PRESETS } from "../data/exercise-presets";
 import { Exercise, WeightExercise, CardioExercise, MuscleGroup, WorkoutHistory } from "../types";
 import { METS_VALUES, calculateCalories } from "../utils/calories";
-import { saveWorkout, getLastWorkout, getWorkoutById, updateWorkout } from "../utils/storage";
+import { getLastWorkout, getWorkoutById, updateWorkout } from "../utils/storage";
 import { addCustomExercise, removeCustomExercise } from "../data/exercise-presets";
 import { getLatestMeasurement } from "../../health/utils/storage";
 import Timer from "../components/Timer";
@@ -123,7 +123,7 @@ export default function EditWorkout() {
         };
       });
     }
-  }, [cardioInputs, newExercise.name, userWeight]);
+  }, [cardioInputs, newExercise.name, userWeight, newExercise]);
 
   const addExercise = (groupId: string) => {
     if (!newExercise.name) return;

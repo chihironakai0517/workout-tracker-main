@@ -101,7 +101,7 @@ export default function NewWorkout() {
         };
       });
     }
-  }, [cardioInputs, newExercise.name, userWeight]);
+  }, [cardioInputs, newExercise.name, userWeight, newExercise]);
 
   const addExercise = (groupId: string) => {
     if (!newExercise.name) return;

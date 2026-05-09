@@ -14,7 +14,7 @@ export const saveMeasurement = (measurement: Omit<BodyMeasurement, "id">): void 
 
 export const updateMeasurement = (measurement: BodyMeasurement): void => {
   const measurements = getMeasurements();
-  const updatedMeasurements = measurements.map(m => 
+  const updatedMeasurements = measurements.map(m =>
     m.id === measurement.id ? measurement : m
   );
   localStorage.setItem(MEASUREMENTS_KEY, JSON.stringify(updatedMeasurements));
@@ -43,7 +43,7 @@ export const getLatestMeasurement = (): BodyMeasurement | null => {
 export const saveDailyNutrition = (nutrition: Omit<DailyNutrition, "id">): void => {
   const existingData = getDailyNutrition(nutrition.date);
   const newData = { ...nutrition, id: existingData?.id || uuidv4() };
-  
+
   const allData = getAllDailyNutrition().filter(d => d.date !== nutrition.date);
   localStorage.setItem(NUTRITION_KEY, JSON.stringify([...allData, newData]));
 };
@@ -99,7 +99,7 @@ export const updateMeal = (date: string, updatedMeal: Meal): void => {
   const dailyData = getDailyNutrition(date);
   if (!dailyData) return;
 
-  const updatedMeals = dailyData.meals.map(meal => 
+  const updatedMeals = dailyData.meals.map(meal =>
     meal.id === updatedMeal.id ? updatedMeal : meal
   );
 
@@ -173,8 +173,8 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + 6);
 
-  console.log("getWeeklySummary called with:", { 
-    startDate: startDate.toISOString(), 
+  console.log("getWeeklySummary called with:", {
+    startDate: startDate.toISOString(),
     endDate: endDate.toISOString(),
     startLocalDate: startDate.toLocaleDateString(),
     endLocalDate: endDate.toLocaleDateString()
@@ -212,9 +212,9 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
   console.log("Filtered weekly nutritionData:", nutritionData);
 
   const goals = getGoals();
-  
+
   const recordedDays = Math.max(nutritionData.length, 1);
-  
+
   console.log("Weekly recordedDays:", recordedDays, "nutritionData.length:", nutritionData.length);
 
   const result = {
@@ -227,19 +227,19 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
       ? measurements.reduce((acc, m) => acc + (m.bodyFat || 0), 0) / measurements.filter(m => m.bodyFat).length
       : undefined,
     totalWorkouts: 0,
-    averageCalories: nutritionData.length > 0 
+    averageCalories: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalCalories, 0) / recordedDays
       : 0,
-    averageProtein: nutritionData.length > 0 
+    averageProtein: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalProtein, 0) / recordedDays
       : 0,
-    averageCarbs: nutritionData.length > 0 
+    averageCarbs: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalCarbs, 0) / recordedDays
       : 0,
-    averageFat: nutritionData.length > 0 
+    averageFat: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalFat, 0) / recordedDays
       : 0,
-    averageWaterIntake: nutritionData.length > 0 
+    averageWaterIntake: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.waterIntake, 0) / recordedDays
       : 0,
     goalProgress: {
@@ -266,7 +266,7 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
         : undefined,
     }
   };
-  
+
   console.log("Weekly summary result:", result);
   return result;
 };
@@ -274,7 +274,7 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
 export const getMonthlySummary = (year: number, month: number): MonthlySummary => {
   const startDate = new Date(year, month, 1);
   const endDate = new Date(year, month + 1, 0);
-  
+
   const measurements = getMeasurements().filter(m => {
     const date = new Date(m.date);
     return date >= startDate && date <= endDate;
@@ -286,8 +286,9 @@ export const getMonthlySummary = (year: number, month: number): MonthlySummary =
   }).filter(d => d.totalCalories > 0 || d.waterIntake > 0 || d.meals.length > 0);
 
   const weeklyReports: WeeklySummary[] = [];
+  // eslint-disable-next-line prefer-const
   let currentDate = new Date(startDate);
-  
+
   while (currentDate <= endDate) {
     weeklyReports.push(getWeeklySummary(currentDate));
     currentDate.setDate(currentDate.getDate() + 7);
@@ -305,24 +306,24 @@ export const getMonthlySummary = (year: number, month: number): MonthlySummary =
       ? measurements.reduce((acc, m) => acc + (m.bodyFat || 0), 0) / measurements.filter(m => m.bodyFat).length
       : undefined,
     totalWorkouts: weeklyReports.reduce((acc, w) => acc + w.totalWorkouts, 0),
-    averageCalories: nutritionData.length > 0 
+    averageCalories: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalCalories, 0) / recordedDays
       : 0,
-    averageProtein: nutritionData.length > 0 
+    averageProtein: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalProtein, 0) / recordedDays
       : 0,
-    averageCarbs: nutritionData.length > 0 
+    averageCarbs: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalCarbs, 0) / recordedDays
       : 0,
-    averageFat: nutritionData.length > 0 
+    averageFat: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.totalFat, 0) / recordedDays
       : 0,
-    averageWaterIntake: nutritionData.length > 0 
+    averageWaterIntake: nutritionData.length > 0
       ? nutritionData.reduce((acc, d) => acc + d.waterIntake, 0) / recordedDays
       : 0,
     goalProgress: weeklyReports[weeklyReports.length - 1].goalProgress,
     weeklyProgress: weeklyReports
   };
-  
+
   return result;
-}; 
+};

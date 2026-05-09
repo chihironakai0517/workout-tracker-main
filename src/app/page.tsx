@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getWorkoutSummaries, getWorkouts, getTimerSettings, saveTimerSettings, TimerSettings } from './workout/utils/storage';
-import { WorkoutSummary, WorkoutHistory, Exercise } from './workout/types';
+import { WorkoutHistory, Exercise } from './workout/types';
 
 // Health tracking icons using heroicons paths
 const HEALTH_LINKS = [
@@ -55,7 +55,6 @@ const formatDateLocal = (date: Date) => {
 };
 
 export default function Home() {
-  const [workouts, setWorkouts] = useState<WorkoutSummary[]>([]);
   const [workoutMap, setWorkoutMap] = useState<Map<string, WorkoutHistory[]>>(new Map());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [monthCursor, setMonthCursor] = useState<Date>(new Date());
@@ -63,7 +62,7 @@ export default function Home() {
   const [showTimerSettings, setShowTimerSettings] = useState(false);
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ vibrationEnabled: true, soundEnabled: true });
 
-  const buildMonthGrid = (cursor: Date) => {
+  const buildMonthGrid = useCallback((cursor: Date) => {
     const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
     const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
     const startDay = start.getDay();
@@ -113,7 +112,7 @@ export default function Home() {
     }
 
     return cells;
-  };
+  }, [workoutMap, selectedDate]);
 
   useEffect(() => {
     const summaries = getWorkoutSummaries();
@@ -131,11 +130,11 @@ export default function Home() {
 
     // Load timer settings
     setTimerSettings(getTimerSettings());
-  }, []);
+  }, [buildMonthGrid]);
 
   useEffect(() => {
     setMonthCells(buildMonthGrid(monthCursor));
-  }, [selectedDate, workoutMap, monthCursor]);
+  }, [selectedDate, workoutMap, monthCursor, buildMonthGrid]);
 
   const getMuscleGroupColor = (muscleGroup: string) => {
     const colors: { [key: string]: string } = {
@@ -157,8 +156,8 @@ export default function Home() {
       workout.muscleGroups.forEach(group => {
         group.exercises.forEach(exercise => {
           exerciseCount += 1;
-          if ((exercise as any).sets) {
-            setCount += (exercise as any).sets;
+          if (exercise.type === 'weight') {
+            setCount += exercise.sets;
           } else {
             setCount += 1;
           }
