@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getExercisePresets, DEFAULT_PRESETS } from "../data/exercise-presets";
+import { getExercisePresets, DEFAULT_PRESETS, ExercisePresets } from "../data/exercise-presets";
 import { Exercise, WeightExercise, CardioExercise, MuscleGroup, WorkoutHistory } from "../types";
 import { METS_VALUES, calculateCalories } from "../utils/calories";
 import { getLastWorkout, getWorkoutById, updateWorkout } from "../utils/storage";
@@ -60,7 +60,7 @@ export default function EditWorkout() {
   const [lastWorkout, setLastWorkout] = useState<WorkoutHistory | null>(null);
   const [userWeight, setUserWeight] = useState<number>(DEFAULT_WEIGHT);
   const [showTimer, setShowTimer] = useState(false);
-  const [exercisePresets, setExercisePresets] = useState(DEFAULT_PRESETS);
+  const [exercisePresets, setExercisePresets] = useState<ExercisePresets>(DEFAULT_PRESETS as unknown as ExercisePresets);
   const [isClient, setIsClient] = useState(false);
   const [showCustomExerciseManager, setShowCustomExerciseManager] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -73,9 +73,6 @@ export default function EditWorkout() {
     setIsClient(true);
     setExercisePresets(getExercisePresets());
 
-    const last = getLastWorkout();
-    setLastWorkout(last);
-
     const latestMeasurement = getLatestMeasurement();
     if (latestMeasurement) {
       setUserWeight(latestMeasurement.weight);
@@ -86,6 +83,8 @@ export default function EditWorkout() {
     const id = params.get('id');
     if (id) {
       setWorkoutId(id);
+      // Exclude the workout being edited from "previous workout" display
+      setLastWorkout(getLastWorkout(id));
       const workout = getWorkoutById(id);
       if (workout) {
         setWorkoutDate(workout.date);
@@ -109,21 +108,18 @@ export default function EditWorkout() {
     const { duration, distance } = cardioInputs;
 
     if (name && METS_VALUES[name as keyof typeof METS_VALUES]) {
-      const speedKmH = (distance / (duration / 60));
+      const speedKmH = distance / (duration / 60);
       const mets = METS_VALUES[name as keyof typeof METS_VALUES].calculate(speedKmH);
       const calories = calculateCalories(mets, duration, userWeight);
 
       setNewExercise(prev => {
         if (!isCardioExercise(prev)) return prev;
-        return {
-          ...prev,
-          duration,
-          distance,
-          calories,
-        };
+        if (prev.calories === calories && prev.duration === duration && prev.distance === distance) return prev;
+        return { ...prev, duration, distance, calories };
       });
     }
-  }, [cardioInputs, newExercise.name, userWeight, newExercise]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardioInputs, newExercise.name, userWeight]);
 
   const addExercise = (groupId: string) => {
     if (!newExercise.name) return;
@@ -135,7 +131,7 @@ export default function EditWorkout() {
         ...newExercise,
         duration: cardioInputs.duration,
         distance: cardioInputs.distance,
-        calories: Math.round(cardioInputs.duration * 8), // Rough estimate
+        calories: (newExercise as CardioExercise).calories || Math.round(cardioInputs.duration * 8),
       } as CardioExercise;
     } else {
       exerciseToAdd = newExercise as WeightExercise;
@@ -564,6 +560,47 @@ export default function EditWorkout() {
                         className="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
                       >
                         +10
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      placeholder="Sets"
+                      min={1}
+                      value={(newExercise as WeightExercise).sets || 1}
+                      onChange={e =>
+                        setNewExercise(prev => ({
+                          ...(prev as WeightExercise),
+                          sets: Math.max(1, Number(e.target.value)),
+                        }))
+                      }
+                      className="border rounded-md px-3 py-2 flex-1"
+                    />
+                    <div className="flex space-x-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewExercise(prev => ({
+                            ...(prev as WeightExercise),
+                            sets: Math.max(1, ((newExercise as WeightExercise).sets || 1) - 1),
+                          }))
+                        }
+                        className="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                      >
+                        -1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewExercise(prev => ({
+                            ...(prev as WeightExercise),
+                            sets: ((newExercise as WeightExercise).sets || 1) + 1,
+                          }))
+                        }
+                        className="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                      >
+                        +1
                       </button>
                     </div>
                   </div>

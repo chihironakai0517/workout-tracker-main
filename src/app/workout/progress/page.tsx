@@ -13,7 +13,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { DEFAULT_PRESETS, getExercisePresets } from "../data/exercise-presets";
+import { DEFAULT_PRESETS, getExercisePresets, ExercisePresets } from "../data/exercise-presets";
 import { getWorkouts } from "../utils/storage";
 import { WorkoutHistory, WeightExercise } from "../types";
 
@@ -66,15 +66,16 @@ const calculateOneRepMax = (weight: number, reps: number) => {
 
 const formatDateLabel = (date?: string) => {
   if (!date) return "-";
-  const parsed = new Date(date);
-  return isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString();
+  const parts = date.split('-').map(Number);
+  if (parts.length !== 3) return date;
+  return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString();
 };
 
 export default function Progress() {
   const [muscleGroup, setMuscleGroup] = useState<keyof typeof DEFAULT_PRESETS>("chest");
   const [exerciseHistory, setExerciseHistory] = useState<ExerciseHistory>({});
   const [selectedExercise, setSelectedExercise] = useState<string>("");
-  const [exercisePresets, setExercisePresets] = useState(DEFAULT_PRESETS);
+  const [exercisePresets, setExercisePresets] = useState<ExercisePresets>(DEFAULT_PRESETS as unknown as ExercisePresets);
   const [isClient, setIsClient] = useState(false);
   const [period, setPeriod] = useState<PeriodOption>("12w");
   const [availableExercises, setAvailableExercises] = useState<string[]>([]);
@@ -287,7 +288,7 @@ export default function Progress() {
         display: selectedExercise
           ? !!exerciseHistory[selectedExercise]?.volumes?.length
           : false,
-        position: 'right',
+        position: 'right' as const,
         grid: {
           drawOnChartArea: false,
         },

@@ -330,7 +330,7 @@ export default function BodyMeasurements() {
                   >
                     <div className="flex justify-between items-center mb-2">
                       <h3 className="text-lg font-medium text-gray-900">
-                        {new Date(measurement.date).toLocaleDateString()}
+                        {(() => { const [y, m, d] = measurement.date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(); })()}
                       </h3>
                       <div className="flex gap-2">
                         <button

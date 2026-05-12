@@ -21,7 +21,7 @@ import {
 import { getDailyMeal, addMeal, deleteMeal, updateWaterIntake } from "./utils";
 import type { Meal, DailyMeal } from "./utils";
 import { getGoals, getLatestMeasurement } from "../utils/storage";
-import type { HealthGoals } from "../../types";
+import type { HealthGoals, BodyMeasurement } from "../../types";
 import { calculateTDEE } from "../utils/bmr";
 
 export default function MealTracker() {
@@ -92,7 +92,7 @@ export default function MealTracker() {
   };
 
   const handleDeleteMeal = (mealId: string) => {
-    deleteMeal(mealId, currentDate);
+    deleteMeal(currentDate, mealId);
     const updatedData = getDailyMeal(currentDate);
     setDailyData(updatedData);
   };

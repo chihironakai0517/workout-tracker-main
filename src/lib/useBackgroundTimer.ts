@@ -26,8 +26,18 @@ export function useBackgroundTimer({
   const timerId = useRef<string>('');
   const swRegistration = useRef<ServiceWorkerRegistration | null>(null);
   const isInitialized = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  const onUpdateRef = useRef(onUpdate);
+  const completeFiredRef = useRef(false);
+  // Fallback interval for when SW is not available
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const remainingAtStartRef = useRef<number>(duration);
 
-  // Initialize timer ID only on client side
+  // Keep callback refs up to date without re-running effects
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
+
   useEffect(() => {
     if (!isInitialized.current) {
       timerId.current = `timer-${Date.now()}-${Math.random()}`;
@@ -43,12 +53,9 @@ export function useBackgroundTimer({
           const registration = await navigator.serviceWorker.register('/sw.js');
           swRegistration.current = registration;
 
-          // Request notification permission
           if ('Notification' in window && Notification.permission === 'default') {
             await Notification.requestPermission();
           }
-
-          console.log('Service Worker registered for background timer');
         } catch (error) {
           console.error('Service Worker registration failed:', error);
         }
@@ -69,21 +76,22 @@ export function useBackgroundTimer({
               remainingTime: event.data.remainingTime,
               isComplete: event.data.isComplete
             }));
-            onUpdate?.(event.data.remainingTime);
+            onUpdateRef.current?.(event.data.remainingTime);
             break;
 
           case 'TIMER_COMPLETE':
             setTimerState(prev => ({
               ...prev,
-              isActive: false,
               isComplete: true,
               remainingTime: 0
             }));
-            // Don't call onComplete immediately - let the timer continue counting negative time
+            if (!completeFiredRef.current) {
+              completeFiredRef.current = true;
+              onCompleteRef.current?.();
+            }
             break;
 
-          case 'TIMER_SYNC':
-            // Sync timer state from Service Worker
+          case 'TIMER_SYNC': {
             const timerData = event.data.timers.find(
               ([id]: [string, TimerState]) => id === timerId.current
             );
@@ -97,6 +105,7 @@ export function useBackgroundTimer({
               }));
             }
             break;
+          }
         }
       }
     };
@@ -105,54 +114,68 @@ export function useBackgroundTimer({
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleMessage);
     };
-  }, [onComplete, onUpdate]);
+  }, []);
+
+  // Fallback: JS interval when SW is not available or not yet active
+  const startFallbackInterval = useCallback((initialRemaining: number) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    startTimeRef.current = Date.now();
+    remainingAtStartRef.current = initialRemaining;
+    completeFiredRef.current = false;
+
+    intervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (startTimeRef.current ?? Date.now())) / 1000);
+      const remaining = remainingAtStartRef.current - elapsed;
+
+      setTimerState(prev => ({
+        ...prev,
+        remainingTime: remaining,
+        isComplete: remaining <= 0,
+        isActive: true
+      }));
+
+      onUpdateRef.current?.(remaining);
+
+      if (remaining <= 0 && !completeFiredRef.current) {
+        completeFiredRef.current = true;
+        onCompleteRef.current?.();
+      }
+    }, 1000);
+  }, []);
+
+  const stopFallbackInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
 
   // Save timer state to localStorage
   useEffect(() => {
     if (timerId.current) {
-      const saveState = () => {
-        localStorage.setItem(`timer-${timerId.current}`, JSON.stringify({
-          ...timerState,
-          timestamp: Date.now()
-        }));
-      };
-
-      saveState();
+      localStorage.setItem(`timer-${timerId.current}`, JSON.stringify({
+        ...timerState,
+        timestamp: Date.now()
+      }));
     }
   }, [timerState]);
 
-  // Load timer state from localStorage on mount
+  // Cleanup localStorage on unmount
   useEffect(() => {
-    if (!timerId.current) return;
-
-    const savedState = localStorage.getItem(`timer-${timerId.current}`);
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        const timeDiff = Date.now() - parsed.timestamp;
-
-        // If timer was active and less than 1 hour has passed, restore it
-        if (parsed.isActive && timeDiff < 3600000) {
-          setTimerState(parsed);
-        } else {
-          // Clear old timer state
-          localStorage.removeItem(`timer-${timerId.current}`);
-        }
-      } catch (error) {
-        console.error('Failed to parse saved timer state:', error);
+    return () => {
+      if (timerId.current) {
+        localStorage.removeItem(`timer-${timerId.current}`);
       }
-    }
-  }, []);
+      stopFallbackInterval();
+    };
+  }, [stopFallbackInterval]);
 
   // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && timerState.isActive) {
-        // Page is hidden, ensure timer continues in background
         if (swRegistration.current?.active) {
-          swRegistration.current.active.postMessage({
-            type: 'TIMER_SYNC'
-          });
+          swRegistration.current.active.postMessage({ type: 'TIMER_SYNC' });
         }
       }
     };
@@ -164,20 +187,26 @@ export function useBackgroundTimer({
   }, [timerState.isActive]);
 
   const startTimer = useCallback(() => {
+    completeFiredRef.current = false;
+    const remaining = timerState.remainingTime || duration;
+
     if (swRegistration.current?.active && timerId.current) {
       swRegistration.current.active.postMessage({
         type: 'TIMER_START',
         timerId: timerId.current,
-        duration: timerState.remainingTime || duration
+        duration: remaining
       });
-
-      setTimerState(prev => ({
-        ...prev,
-        isActive: true,
-        isComplete: false
-      }));
+    } else {
+      // SW not ready — use JS interval fallback
+      startFallbackInterval(remaining);
     }
-  }, [duration, timerState.remainingTime]);
+
+    setTimerState(prev => ({
+      ...prev,
+      isActive: true,
+      isComplete: false
+    }));
+  }, [duration, timerState.remainingTime, startFallbackInterval]);
 
   const pauseTimer = useCallback(() => {
     if (swRegistration.current?.active && timerId.current) {
@@ -185,13 +214,10 @@ export function useBackgroundTimer({
         type: 'TIMER_PAUSE',
         timerId: timerId.current
       });
-
-      setTimerState(prev => ({
-        ...prev,
-        isActive: false
-      }));
     }
-  }, []);
+    stopFallbackInterval();
+    setTimerState(prev => ({ ...prev, isActive: false }));
+  }, [stopFallbackInterval]);
 
   const resumeTimer = useCallback(() => {
     if (swRegistration.current?.active && timerId.current) {
@@ -199,13 +225,11 @@ export function useBackgroundTimer({
         type: 'TIMER_RESUME',
         timerId: timerId.current
       });
-
-      setTimerState(prev => ({
-        ...prev,
-        isActive: true
-      }));
+    } else {
+      startFallbackInterval(timerState.remainingTime);
     }
-  }, []);
+    setTimerState(prev => ({ ...prev, isActive: true }));
+  }, [timerState.remainingTime, startFallbackInterval]);
 
   const stopTimer = useCallback(() => {
     if (swRegistration.current?.active && timerId.current) {
@@ -214,24 +238,21 @@ export function useBackgroundTimer({
         timerId: timerId.current
       });
     }
-
+    stopFallbackInterval();
     setTimerState({
       isActive: false,
       remainingTime: duration,
       isComplete: false
     });
-
     if (timerId.current) {
       localStorage.removeItem(`timer-${timerId.current}`);
     }
-  }, [duration]);
+  }, [duration, stopFallbackInterval]);
 
   const resetTimer = useCallback(() => {
     stopTimer();
-    setTimerState(prev => ({
-      ...prev,
-      remainingTime: duration
-    }));
+    completeFiredRef.current = false;
+    setTimerState(prev => ({ ...prev, remainingTime: duration }));
   }, [duration, stopTimer]);
 
   const formatTime = useCallback((totalSeconds: number) => {

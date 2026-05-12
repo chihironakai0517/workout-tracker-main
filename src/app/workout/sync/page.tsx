@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   downloadWorkoutData,
   importWorkoutData,
@@ -84,10 +83,6 @@ export default function SyncPage() {
     alert("Copied to clipboard!");
   };
 
-  const generateQRCodeURL = (text: string) => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
@@ -161,16 +156,9 @@ export default function SyncPage() {
             {showQRCode && generatedSyncCode && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-medium text-gray-900 mb-2">Sync Code Generated</h3>
-                <div className="text-center mb-4">
-                  <Image
-                    src={generateQRCodeURL(generatedSyncCode)}
-                    alt="QR Code"
-                    width={200}
-                    height={200}
-                    className="mx-auto mb-2"
-                  />
-                  <p className="text-xs text-gray-600">Scan with your other device</p>
-                </div>
+                <p className="text-xs text-gray-600 mb-3">
+                  Copy this code and paste it on your other device.
+                </p>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"

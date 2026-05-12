@@ -173,49 +173,20 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + 6);
 
-  console.log("getWeeklySummary called with:", {
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-    startLocalDate: startDate.toLocaleDateString(),
-    endLocalDate: endDate.toLocaleDateString()
-  });
-
   const measurements = getMeasurements().filter(m => {
     const date = new Date(m.date);
     return date >= startDate && date <= endDate;
   });
 
-  const nutritionData = getAllDailyNutrition().filter(d => {
-    const date = new Date(d.date);
-    const isInRange = date >= startDate && date <= endDate;
-    console.log("Checking nutrition data:", {
-      nutritionDate: d.date,
-      parsedDate: date.toLocaleDateString(),
-      isInRange,
-      startDate: startDate.toLocaleDateString(),
-      endDate: endDate.toLocaleDateString()
-    });
-    return isInRange;
-  }).filter(d => {
-    const hasData = d.totalCalories > 0 || d.waterIntake > 0 || d.meals.length > 0;
-    console.log("Nutrition data has content:", {
-      date: d.date,
-      totalCalories: d.totalCalories,
-      waterIntake: d.waterIntake,
-      mealsCount: d.meals.length,
-      hasData
-    });
-    return hasData;
-  });
-
-  console.log("Filtered weekly measurements:", measurements);
-  console.log("Filtered weekly nutritionData:", nutritionData);
+  const nutritionData = getAllDailyNutrition()
+    .filter(d => {
+      const date = new Date(d.date);
+      return date >= startDate && date <= endDate;
+    })
+    .filter(d => d.totalCalories > 0 || d.waterIntake > 0 || d.meals.length > 0);
 
   const goals = getGoals();
-
   const recordedDays = Math.max(nutritionData.length, 1);
-
-  console.log("Weekly recordedDays:", recordedDays, "nutritionData.length:", nutritionData.length);
 
   const result = {
     startDate: startDate.toISOString(),
@@ -267,7 +238,6 @@ export const getWeeklySummary = (startDate: Date): WeeklySummary => {
     }
   };
 
-  console.log("Weekly summary result:", result);
   return result;
 };
 

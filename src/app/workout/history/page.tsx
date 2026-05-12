@@ -88,15 +88,15 @@ export default function WorkoutHistoryPage() {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {new Date(workout.date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                      {(() => {
+                        const [y, m, d] = workout.date.split('-').map(Number);
+                        return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                        });
+                      })()}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {new Date(workout.date).toLocaleDateString()}
+                      {(() => { const [y, m, d] = workout.date.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(); })()}
                     </p>
                   </div>
                   <div className="flex gap-2">

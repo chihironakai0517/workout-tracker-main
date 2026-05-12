@@ -41,20 +41,14 @@ export default function Summary() {
 
   useEffect(() => {
     if (view === "weekly") {
-      console.log("Getting weekly summary for date:", selectedDate);
-
-      // Calculate the start of the week (Monday)
       const weekStart = new Date(selectedDate);
-      const dayOfWeek = weekStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Make Monday the start
+      const dayOfWeek = weekStart.getDay();
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       weekStart.setDate(weekStart.getDate() - daysToSubtract);
-      weekStart.setHours(0, 0, 0, 0); // Set to start of day
-
-      console.log("Calculated week start:", weekStart);
+      weekStart.setHours(0, 0, 0, 0);
 
       const summary = getWeeklySummary(weekStart);
       setWeeklySummary(summary);
-      console.log("Weekly Summary set:", summary);
     } else {
       const summary = getMonthlySummary(selectedDate.getFullYear(), selectedDate.getMonth());
       setMonthlySummary(summary);
@@ -299,12 +293,12 @@ export default function Summary() {
         }
       },
       tooltip: {
-        filter: function(tooltipItem: TooltipItem) {
+        filter: function(tooltipItem: TooltipItem<'bar'>) {
           // Skip null values
           return tooltipItem.parsed.y !== null;
         },
         callbacks: {
-          title: function(tooltipItems: TooltipItem[]) {
+          title: function(tooltipItems: TooltipItem<'bar'>[]) {
             return tooltipItems[0]?.label || '';
           },
           label: (context: TooltipItem) => {

@@ -8,6 +8,7 @@ export const saveWorkout = (workout: WorkoutHistory): void => {
 };
 
 export const getWorkouts = (): WorkoutHistory[] => {
+  if (typeof window === 'undefined') return [];
   const data = localStorage.getItem(STORAGE_KEY);
   return data ? JSON.parse(data) : [];
 };
@@ -29,9 +30,10 @@ export const getWorkoutSummaries = (): WorkoutSummary[] => {
   }));
 };
 
-export const getLastWorkout = (): WorkoutHistory | null => {
+export const getLastWorkout = (excludeId?: string): WorkoutHistory | null => {
   const workouts = getWorkouts();
-  return workouts.length > 0 ? workouts[workouts.length - 1] : null;
+  const filtered = excludeId ? workouts.filter(w => w.id !== excludeId) : workouts;
+  return filtered.length > 0 ? filtered[filtered.length - 1] : null;
 };
 
 export const updateWorkout = (id: string, updatedWorkout: WorkoutHistory): void => {
@@ -58,6 +60,7 @@ export interface TimerSettings {
 }
 
 export const getTimerSettings = (): TimerSettings => {
+  if (typeof window === 'undefined') return { vibrationEnabled: true, soundEnabled: true };
   const data = localStorage.getItem(TIMER_SETTINGS_KEY);
   return data ? JSON.parse(data) : { vibrationEnabled: true, soundEnabled: true };
 };

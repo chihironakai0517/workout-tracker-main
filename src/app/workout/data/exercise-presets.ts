@@ -53,21 +53,29 @@ export const DEFAULT_PRESETS = {
   ]
 } as const;
 
+export type ExercisePresets = { [K in keyof typeof DEFAULT_PRESETS]: string[] };
+
 const STORAGE_KEY = "custom-exercises";
 
-const loadCustomExercises = () => {
-  if (typeof window === "undefined") return DEFAULT_PRESETS;
+/** Returns a deep-mutable copy of DEFAULT_PRESETS, never the original object. */
+const defaultCopy = (): ExercisePresets =>
+  Object.fromEntries(
+    Object.entries(DEFAULT_PRESETS).map(([k, v]) => [k, [...v]])
+  ) as ExercisePresets;
+
+const loadCustomExercises = (): ExercisePresets => {
+  if (typeof window === "undefined") return defaultCopy();
   const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : DEFAULT_PRESETS;
+  return data ? JSON.parse(data) : defaultCopy();
 };
 
-const saveCustomExercises = (exercises: typeof DEFAULT_PRESETS) => {
+const saveCustomExercises = (exercises: ExercisePresets) => {
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(exercises));
   }
 };
 
-export const getExercisePresets = () => {
+export const getExercisePresets = (): ExercisePresets => {
   return loadCustomExercises();
 };
 
@@ -86,5 +94,5 @@ export const removeCustomExercise = (muscleGroup: keyof typeof DEFAULT_PRESETS, 
 };
 
 export const resetToDefaultPresets = () => {
-  saveCustomExercises(DEFAULT_PRESETS);
+  saveCustomExercises(defaultCopy());
 };
