@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { getWorkoutSummaries, getWorkouts, getTimerSettings, saveTimerSettings, TimerSettings } from './workout/utils/storage';
-import { WorkoutSummary, WorkoutHistory, Exercise } from './workout/types';
+import { getWorkouts, getTimerSettings, saveTimerSettings, TimerSettings } from './workout/utils/storage';
+import { WorkoutHistory, Exercise } from './workout/types';
 
 // Health tracking icons using heroicons paths
 const HEALTH_LINKS = [
@@ -55,7 +55,6 @@ const formatDateLocal = (date: Date) => {
 };
 
 export default function Home() {
-  const [workouts, setWorkouts] = useState<WorkoutSummary[]>([]);
   const [workoutMap, setWorkoutMap] = useState<Map<string, WorkoutHistory[]>>(new Map());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [monthCursor, setMonthCursor] = useState<Date>(new Date());
@@ -116,9 +115,6 @@ export default function Home() {
   }, [workoutMap, selectedDate]);
 
   useEffect(() => {
-    const summaries = getWorkoutSummaries();
-    setWorkouts(summaries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-
     const data = getWorkouts();
     const map = new Map<string, WorkoutHistory[]>();
     data.forEach(w => {
