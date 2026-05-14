@@ -136,9 +136,13 @@ export function useBackgroundTimer({
 
       onUpdateRef.current?.(remaining);
 
-      if (remaining <= 0 && !completeFiredRef.current) {
-        completeFiredRef.current = true;
-        onCompleteRef.current?.();
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current!);
+        intervalRef.current = null;
+        if (!completeFiredRef.current) {
+          completeFiredRef.current = true;
+          onCompleteRef.current?.();
+        }
       }
     }, 1000);
   }, []);

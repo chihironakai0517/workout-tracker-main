@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getWorkouts, getTimerSettings, saveTimerSettings, TimerSettings } from './workout/utils/storage';
 import { WorkoutHistory, Exercise } from './workout/types';
@@ -54,65 +54,49 @@ const formatDateLocal = (date: Date) => {
   return date.toLocaleDateString('en-CA');
 };
 
+type GridCell = { date: Date; inMonth: boolean; hasWorkout: boolean; isToday: boolean; isSelected: boolean; };
+
+const buildMonthGrid = (
+  cursor: Date,
+  workoutMap: Map<string, WorkoutHistory[]>,
+  selectedDate: Date
+): GridCell[] => {
+  const today = formatDateLocal(new Date());
+  const selectedKey = formatDateLocal(selectedDate);
+  const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+  const startDay = start.getDay();
+  const totalDays = end.getDate();
+  const cells: GridCell[] = [];
+
+  for (let i = 0; i < startDay; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() - (startDay - i));
+    const key = formatDateLocal(d);
+    cells.push({ date: d, inMonth: false, hasWorkout: workoutMap.has(key), isToday: key === today, isSelected: key === selectedKey });
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    const dayDate = new Date(cursor.getFullYear(), cursor.getMonth(), d);
+    const key = formatDateLocal(dayDate);
+    cells.push({ date: dayDate, inMonth: true, hasWorkout: workoutMap.has(key), isToday: key === today, isSelected: key === selectedKey });
+  }
+  const trailing = (7 - (cells.length % 7)) % 7;
+  for (let i = 0; i < trailing; i++) {
+    const d = new Date(end);
+    d.setDate(end.getDate() + i + 1);
+    const key = formatDateLocal(d);
+    cells.push({ date: d, inMonth: false, hasWorkout: workoutMap.has(key), isToday: key === today, isSelected: key === selectedKey });
+  }
+  return cells;
+};
+
 export default function Home() {
   const [workoutMap, setWorkoutMap] = useState<Map<string, WorkoutHistory[]>>(new Map());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [monthCursor, setMonthCursor] = useState<Date>(new Date());
-  const [monthCells, setMonthCells] = useState<{ date: Date; inMonth: boolean; hasWorkout: boolean; isToday: boolean; isSelected: boolean; }[]>([]);
+  const [monthCells, setMonthCells] = useState<GridCell[]>([]);
   const [showTimerSettings, setShowTimerSettings] = useState(false);
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ vibrationEnabled: true, soundEnabled: true });
-
-  const buildMonthGrid = useCallback((cursor: Date) => {
-    const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-    const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
-    const startDay = start.getDay();
-    const totalDays = end.getDate();
-    const cells: { date: Date; inMonth: boolean; hasWorkout: boolean; isToday: boolean; isSelected: boolean; }[] = [];
-
-    // Leading blanks (previous month)
-    for (let i = 0; i < startDay; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() - (startDay - i));
-      const key = formatDateLocal(d);
-      cells.push({
-        date: d,
-        inMonth: false,
-        hasWorkout: workoutMap.has(key),
-        isToday: key === formatDateLocal(new Date()),
-        isSelected: key === formatDateLocal(selectedDate),
-      });
-    }
-
-    // Current month days
-    for (let d = 1; d <= totalDays; d++) {
-      const dayDate = new Date(cursor.getFullYear(), cursor.getMonth(), d);
-      const key = formatDateLocal(dayDate);
-      cells.push({
-        date: dayDate,
-        inMonth: true,
-        hasWorkout: workoutMap.has(key),
-        isToday: key === formatDateLocal(new Date()),
-        isSelected: key === formatDateLocal(selectedDate),
-      });
-    }
-
-    // Trailing blanks to fill last week
-    const trailing = (7 - (cells.length % 7)) % 7;
-    for (let i = 0; i < trailing; i++) {
-      const d = new Date(end);
-      d.setDate(end.getDate() + i + 1);
-      const key = formatDateLocal(d);
-      cells.push({
-        date: d,
-        inMonth: false,
-        hasWorkout: workoutMap.has(key),
-        isToday: key === formatDateLocal(new Date()),
-        isSelected: key === formatDateLocal(selectedDate),
-      });
-    }
-
-    return cells;
-  }, [workoutMap, selectedDate]);
 
   useEffect(() => {
     const data = getWorkouts();
@@ -122,16 +106,11 @@ export default function Home() {
       if (!map.has(key)) map.set(key, []);
       map.get(key)?.push(w);
     });
+    const today = new Date();
     setWorkoutMap(map);
-    setMonthCells(buildMonthGrid(new Date()));
-
-    // Load timer settings
     setTimerSettings(getTimerSettings());
-  }, [buildMonthGrid]);
-
-  useEffect(() => {
-    setMonthCells(buildMonthGrid(monthCursor));
-  }, [selectedDate, workoutMap, monthCursor, buildMonthGrid]);
+    setMonthCells(buildMonthGrid(today, map, today));
+  }, []);
 
   const getMuscleGroupColor = (muscleGroup: string) => {
     const colors: { [key: string]: string } = {
@@ -165,20 +144,22 @@ export default function Home() {
   };
 
   const handleSelectDate = (date: Date) => {
+    const newCursor = new Date(date.getFullYear(), date.getMonth(), 1);
     setSelectedDate(date);
-    setMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1));
+    setMonthCursor(newCursor);
+    setMonthCells(buildMonthGrid(newCursor, workoutMap, date));
   };
 
   const goToPrevMonth = () => {
-    const next = new Date(monthCursor);
-    next.setMonth(monthCursor.getMonth() - 1);
+    const next = new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1);
     setMonthCursor(next);
+    setMonthCells(buildMonthGrid(next, workoutMap, selectedDate));
   };
 
   const goToNextMonth = () => {
-    const next = new Date(monthCursor);
-    next.setMonth(monthCursor.getMonth() + 1);
+    const next = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1);
     setMonthCursor(next);
+    setMonthCells(buildMonthGrid(next, workoutMap, selectedDate));
   };
 
   const handleSaveTimerSettings = (newSettings: TimerSettings) => {

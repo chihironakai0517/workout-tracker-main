@@ -17,15 +17,7 @@ import { DEFAULT_PRESETS, getExercisePresets, ExercisePresets } from "../data/ex
 import { getWorkouts } from "../utils/storage";
 import { WorkoutHistory, WeightExercise } from "../types";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 type ExerciseProgress = {
   dates: string[];
@@ -36,19 +28,18 @@ type ExerciseProgress = {
   oneRmReps: number[];
 };
 
-type ExerciseHistory = {
-  [key: string]: ExerciseProgress;
-};
-
+type ExerciseHistory = { [key: string]: ExerciseProgress };
 type PeriodOption = "4w" | "8w" | "12w" | "24w" | "all";
 
 const PERIOD_OPTIONS: { value: PeriodOption; label: string }[] = [
-  { value: "4w", label: "Last 4 weeks" },
-  { value: "8w", label: "Last 8 weeks" },
-  { value: "12w", label: "Last 12 weeks" },
-  { value: "24w", label: "Last 24 weeks" },
-  { value: "all", label: "All time" },
+  { value: "4w", label: "4w" },
+  { value: "8w", label: "8w" },
+  { value: "12w", label: "12w" },
+  { value: "24w", label: "24w" },
+  { value: "all", label: "All" },
 ];
+
+const MUSCLE_GROUPS = Object.keys(DEFAULT_PRESETS);
 
 const getPeriodStartDate = (period: PeriodOption) => {
   if (period === "all") return null;
@@ -60,7 +51,6 @@ const getPeriodStartDate = (period: PeriodOption) => {
 
 const calculateOneRepMax = (weight: number, reps: number) => {
   if (!weight || !reps) return 0;
-  // Requested formula: weight * reps / 40 + weight
   return Math.round(((weight * reps) / 40 + weight) * 10) / 10;
 };
 
@@ -82,17 +72,17 @@ export default function Progress() {
 
   const formatTrend = (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
   const trendColor = (value: number) => {
-    if (value > 0) return "text-green-700";
-    if (value < 0) return "text-red-700";
-    return "text-gray-700";
+    if (value > 0) return "text-green-600 font-semibold";
+    if (value < 0) return "text-red-600 font-semibold";
+    return "text-gray-600";
   };
+  const trendIcon = (value: number) => value > 0 ? "↑" : value < 0 ? "↓" : "→";
 
   useEffect(() => {
     setIsClient(true);
     setExercisePresets(getExercisePresets());
   }, []);
 
-  // Keep presets in sync when returning to the tab or when storage changes
   useEffect(() => {
     if (!isClient) return;
     const refreshPresets = () => setExercisePresets(getExercisePresets());
@@ -110,12 +100,10 @@ export default function Progress() {
     const startDate = getPeriodStartDate(period);
     const workouts = getWorkouts().filter(workout => {
       if (!startDate) return true;
-      const workoutDate = new Date(workout.date);
-      return workoutDate >= startDate;
+      return new Date(workout.date) >= startDate;
     });
     const history: ExerciseHistory = {};
 
-    // Combine presets + any exercises found in workouts (to include custom names)
     const presetsForGroup = exercisePresets[muscleGroup] || [];
     const exerciseNameSet = new Set<string>(presetsForGroup);
 
@@ -123,9 +111,7 @@ export default function Progress() {
       workout.muscleGroups.forEach(group => {
         if (group.id === muscleGroup) {
           group.exercises.forEach(exercise => {
-            if (exercise.type === "weight") {
-              exerciseNameSet.add(exercise.name);
-            }
+            if (exercise.type === "weight") exerciseNameSet.add(exercise.name);
           });
         }
       });
@@ -133,56 +119,36 @@ export default function Progress() {
 
     const allExercises = Array.from(exerciseNameSet).sort((a, b) => a.localeCompare(b));
 
-    // Initialize history with all preset exercises
     allExercises.forEach((exercise: string) => {
-      history[exercise] = {
-        dates: [],
-        weights: [],
-        volumes: [],
-        oneRms: [],
-        oneRmWeights: [],
-        oneRmReps: []
-      };
+      history[exercise] = { dates: [], weights: [], volumes: [], oneRms: [], oneRmWeights: [], oneRmReps: [] };
     });
 
-    // Populate history with actual workout data
     workouts.forEach((workout: WorkoutHistory) => {
       workout.muscleGroups.forEach(group => {
         if (group.id === muscleGroup) {
           group.exercises.forEach(exercise => {
             if (exercise.type === 'weight' && history[exercise.name]) {
               const weightExercise = exercise as WeightExercise;
-              // Calculate maximum weight for this exercise on this date
               const maxWeight = weightExercise.weight;
               const volume = weightExercise.weight * weightExercise.reps * (weightExercise.sets || 1);
               const oneRm = calculateOneRepMax(weightExercise.weight, weightExercise.reps);
-              const oneRmWeight = weightExercise.weight;
-              const oneRmReps = weightExercise.reps;
 
-              // Find if this date already exists
               const existingDateIndex = history[exercise.name].dates.indexOf(workout.date);
               if (existingDateIndex >= 0) {
-                // If date exists, keep the higher weight
-                history[exercise.name].weights[existingDateIndex] = Math.max(
-                  history[exercise.name].weights[existingDateIndex],
-                  maxWeight
-                );
-                // Accumulate volume for the same day and keep highest 1RM
-                history[exercise.name].volumes[existingDateIndex] =
-                  (history[exercise.name].volumes[existingDateIndex] || 0) + volume;
+                history[exercise.name].weights[existingDateIndex] = Math.max(history[exercise.name].weights[existingDateIndex], maxWeight);
+                history[exercise.name].volumes[existingDateIndex] = (history[exercise.name].volumes[existingDateIndex] || 0) + volume;
                 if (oneRm > (history[exercise.name].oneRms[existingDateIndex] || 0)) {
                   history[exercise.name].oneRms[existingDateIndex] = oneRm;
-                  history[exercise.name].oneRmWeights[existingDateIndex] = oneRmWeight;
-                  history[exercise.name].oneRmReps[existingDateIndex] = oneRmReps;
+                  history[exercise.name].oneRmWeights[existingDateIndex] = weightExercise.weight;
+                  history[exercise.name].oneRmReps[existingDateIndex] = weightExercise.reps;
                 }
               } else {
-                // Add new date and weight
                 history[exercise.name].dates.push(workout.date);
                 history[exercise.name].weights.push(maxWeight);
                 history[exercise.name].volumes.push(volume);
                 history[exercise.name].oneRms.push(oneRm);
-                history[exercise.name].oneRmWeights.push(oneRmWeight);
-                history[exercise.name].oneRmReps.push(oneRmReps);
+                history[exercise.name].oneRmWeights.push(weightExercise.weight);
+                history[exercise.name].oneRmReps.push(weightExercise.reps);
               }
             }
           });
@@ -190,7 +156,6 @@ export default function Progress() {
       });
     });
 
-    // Sort by date for each exercise
     Object.keys(history).forEach(exerciseName => {
       const combined = history[exerciseName].dates.map((date, index) => ({
         date,
@@ -222,30 +187,36 @@ export default function Progress() {
     ) : [],
     datasets: [
       {
-        label: `${selectedExercise} Weight Progress (kg)`,
+        label: `Weight (kg)`,
         data: selectedExercise ? exerciseHistory[selectedExercise]?.weights : [],
-        borderColor: "rgb(75, 192, 192)",
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
-        tension: 0.1,
-        fill: true
-      },
-      {
-        label: `${selectedExercise} Volume (kg)`,
-        data: selectedExercise ? exerciseHistory[selectedExercise]?.volumes : [],
         borderColor: "rgb(99, 102, 241)",
-        backgroundColor: "rgba(99, 102, 241, 0.15)",
-        tension: 0.1,
+        backgroundColor: "rgba(99, 102, 241, 0.1)",
+        tension: 0.3,
         fill: true,
-        yAxisID: "y1"
+        pointRadius: 4,
+        pointHoverRadius: 6,
       },
       {
-        label: `${selectedExercise} 1RM (est. kg)`,
+        label: `1RM est. (kg)`,
         data: selectedExercise ? exerciseHistory[selectedExercise]?.oneRms : [],
         borderColor: "rgb(16, 185, 129)",
-        backgroundColor: "rgba(16, 185, 129, 0.15)",
-        tension: 0.1,
-        fill: true
-      }
+        backgroundColor: "rgba(16, 185, 129, 0.08)",
+        tension: 0.3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
+      {
+        label: `Volume (kg)`,
+        data: selectedExercise ? exerciseHistory[selectedExercise]?.volumes : [],
+        borderColor: "rgb(251, 146, 60)",
+        backgroundColor: "rgba(251, 146, 60, 0.08)",
+        tension: 0.3,
+        fill: true,
+        yAxisID: "y1",
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      },
     ]
   };
 
@@ -253,69 +224,36 @@ export default function Progress() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: 'bottom' as const,
-      },
-      title: {
-        display: true,
-        text: 'Progress Over Time'
-      }
+      legend: { position: 'bottom' as const, labels: { boxWidth: 12, padding: 16 } },
+      title: { display: false },
     },
     scales: {
       y: {
-        title: {
-          display: true,
-          text: 'Weight / 1RM (kg)'
-        },
+        title: { display: true, text: 'Weight / 1RM (kg)' },
         beginAtZero: false,
-        ticks: {
-          maxTicksLimit: 5
-        }
+        ticks: { maxTicksLimit: 5 },
+        grid: { color: 'rgba(0,0,0,0.05)' },
       },
       x: {
-        title: {
-          display: true,
-          text: 'Date'
-        },
-        ticks: {
-          autoSkip: true,
-          maxTicksLimit: 6,
-          maxRotation: 0,
-          minRotation: 0
-        }
+        ticks: { autoSkip: true, maxTicksLimit: 6, maxRotation: 0, minRotation: 0 },
+        grid: { display: false },
       },
       y1: {
-        display: selectedExercise
-          ? !!exerciseHistory[selectedExercise]?.volumes?.length
-          : false,
+        display: selectedExercise ? !!exerciseHistory[selectedExercise]?.volumes?.length : false,
         position: 'right' as const,
-        grid: {
-          drawOnChartArea: false,
-        },
-        title: {
-          display: true,
-          text: 'Volume (kg)'
-        },
+        grid: { drawOnChartArea: false },
+        title: { display: true, text: 'Volume (kg)' },
         beginAtZero: true,
-        ticks: {
-          maxTicksLimit: 5
-        }
+        ticks: { maxTicksLimit: 5 },
       }
     }
   };
 
   const getProgressStats = () => {
-    if (!selectedExercise || !exerciseHistory[selectedExercise]?.weights.length) {
-      return null;
-    }
+    if (!selectedExercise || !exerciseHistory[selectedExercise]?.weights.length) return null;
 
     const history = exerciseHistory[selectedExercise];
-    const weights = history.weights;
-    const volumes = history.volumes;
-    const oneRms = history.oneRms;
-    const oneRmWeights = history.oneRmWeights;
-    const oneRmReps = history.oneRmReps;
-    const dates = history.dates;
+    const { weights, volumes, oneRms, oneRmWeights, oneRmReps, dates } = history;
 
     const maxWeight = Math.max(...weights);
     const maxVolume = volumes.length ? Math.max(...volumes) : 0;
@@ -325,208 +263,205 @@ export default function Progress() {
     const pbVolumeIndex = volumes.indexOf(maxVolume);
     const pbOneRmIndex = oneRms.indexOf(maxOneRm);
 
-    const weightTrend = weights.length > 1 ? weights[weights.length - 1] - weights[weights.length - 2] : 0;
-    const volumeTrend = volumes.length > 1 ? volumes[volumes.length - 1] - volumes[volumes.length - 2] : 0;
-    const oneRmTrend = oneRms.length > 1 ? oneRms[oneRms.length - 1] - oneRms[oneRms.length - 2] : 0;
-
     return {
       maxWeight,
       maxVolume,
       maxOneRm,
-      weightTrend,
-      volumeTrend,
-      oneRmTrend,
+      weightTrend: weights.length > 1 ? weights[weights.length - 1] - weights[weights.length - 2] : 0,
+      volumeTrend: volumes.length > 1 ? volumes[volumes.length - 1] - volumes[volumes.length - 2] : 0,
+      oneRmTrend: oneRms.length > 1 ? oneRms[oneRms.length - 1] - oneRms[oneRms.length - 2] : 0,
       lastWeight: weights[weights.length - 1],
       lastVolume: volumes[volumes.length - 1] || 0,
       lastOneRm: oneRms[oneRms.length - 1] || 0,
       workoutCount: weights.length,
-      pbWeightDate: dates[pbWeightIndex],
-      pbVolumeDate: dates[pbVolumeIndex],
-      pbOneRmDate: dates[pbOneRmIndex],
-      pbOneRmWeight: oneRmWeights[pbOneRmIndex] || 0,
-      pbOneRmReps: oneRmReps[pbOneRmIndex] || 0,
+      pbWeightDate: pbWeightIndex >= 0 ? dates[pbWeightIndex] : undefined,
+      pbVolumeDate: pbVolumeIndex >= 0 ? dates[pbVolumeIndex] : undefined,
+      pbOneRmDate: pbOneRmIndex >= 0 ? dates[pbOneRmIndex] : undefined,
+      pbOneRmWeight: pbOneRmIndex >= 0 ? (oneRmWeights[pbOneRmIndex] || 0) : 0,
+      pbOneRmReps: pbOneRmIndex >= 0 ? (oneRmReps[pbOneRmIndex] || 0) : 0,
     };
   };
 
   const stats = getProgressStats();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Exercise Progress</h1>
-          <Link
-            href="/"
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-          >
-            Back
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
+      <div className="max-w-6xl mx-auto space-y-6">
+
+        {/* Header */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Exercise Progress</h1>
+                <p className="text-blue-100 text-sm mt-1">Track personal bests and trends over time</p>
+              </div>
+              <Link
+                href="/"
+                className="self-start sm:self-auto px-4 py-2 text-sm bg-white/20 text-white rounded-lg hover:bg-white/30 transition-all backdrop-blur-sm border border-white/30"
+              >
+                ← Home
+              </Link>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Filters */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* Muscle group */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Muscle Group
-              </label>
-              <select
-                value={muscleGroup}
-                onChange={(e) => {
-                  setMuscleGroup(e.target.value as keyof typeof DEFAULT_PRESETS);
-                  setSelectedExercise("");
-                }}
-                className="w-full border rounded-md px-3 py-2"
-              >
-                {Object.keys(DEFAULT_PRESETS).map(group => (
-                  <option key={group} value={group}>
-                    {group.charAt(0).toUpperCase() + group.slice(1)}
-                  </option>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Muscle Group</label>
+              <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-xl p-1">
+                {MUSCLE_GROUPS.map(group => (
+                  <button
+                    key={group}
+                    onClick={() => { setMuscleGroup(group as keyof typeof DEFAULT_PRESETS); setSelectedExercise(""); }}
+                    className={`py-1.5 text-xs font-medium rounded-lg transition-all capitalize ${
+                      muscleGroup === group
+                        ? "bg-white text-blue-700 shadow-sm font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {group}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
+            {/* Exercise */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Exercise
-              </label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Exercise</label>
               <select
                 value={selectedExercise}
-                onChange={(e) => setSelectedExercise(e.target.value)}
-                className="w-full border rounded-md px-3 py-2"
+                onChange={e => setSelectedExercise(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-gray-50"
               >
                 <option value="">Select Exercise</option>
                 {isClient && availableExercises.map((exercise: string) => (
-                  <option
-                    key={exercise}
-                    value={exercise}
-                    disabled={!exerciseHistory[exercise]?.weights.length}
-                  >
-                    {exercise} {!exerciseHistory[exercise]?.weights.length ? "(No data)" : ""}
+                  <option key={exercise} value={exercise} disabled={!exerciseHistory[exercise]?.weights.length}>
+                    {exercise}{!exerciseHistory[exercise]?.weights.length ? " (No data)" : ""}
                   </option>
                 ))}
               </select>
             </div>
 
+            {/* Period */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Period
-              </label>
-              <select
-                value={period}
-                onChange={(e) => setPeriod(e.target.value as PeriodOption)}
-                className="w-full border rounded-md px-3 py-2"
-              >
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Period</label>
+              <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
                 {PERIOD_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
+                  <button
+                    key={option.value}
+                    onClick={() => setPeriod(option.value)}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                      period === option.value
+                        ? "bg-white text-blue-700 shadow-sm font-semibold"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
                     {option.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Applies to charts and personal bests.
-              </p>
+              </div>
             </div>
           </div>
+        </div>
 
-          {selectedExercise && exerciseHistory[selectedExercise]?.weights.length > 0 ? (
-            <div>
-              <div className="mb-6 overflow-x-auto pb-3 -mx-4 px-4 sm:mx-0 sm:px-0">
-                <div className="min-w-[520px] h-64 sm:h-72">
+        {/* Chart + Stats */}
+        {selectedExercise && exerciseHistory[selectedExercise]?.weights.length > 0 ? (
+          <div className="space-y-4">
+            {/* Chart */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-6">
+              <h2 className="text-base font-semibold text-gray-800 mb-4">{selectedExercise} — Progress Chart</h2>
+              <div className="overflow-x-auto pb-2 -mx-2 px-2">
+                <div className="min-w-[520px] h-64 sm:h-80">
                   <Line data={chartData} options={chartOptions} />
                 </div>
               </div>
+            </div>
 
-              {stats && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-red-50 rounded-lg p-4">
-                      <h3 className="text-sm font-medium text-red-600">Max Weight (PB)</h3>
-                      <p className="text-2xl font-bold text-red-900">
-                        {stats.maxWeight.toFixed(1)} kg
-                      </p>
-                      <p className="text-xs text-red-700 mt-1">
-                        On {formatDateLabel(stats.pbWeightDate)}
-                      </p>
-                    </div>
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <h3 className="text-sm font-medium text-purple-600">Max Volume</h3>
-                      <p className="text-2xl font-bold text-purple-900">
-                        {Math.round(stats.maxVolume)} kg
-                      </p>
-                      <p className="text-xs text-purple-700 mt-1">
-                        On {formatDateLabel(stats.pbVolumeDate)}
-                      </p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <h3 className="text-sm font-medium text-green-600">Max 1RM (est.)</h3>
-                      <p className="text-2xl font-bold text-green-900">
-                        {stats.maxOneRm.toFixed(1)} kg
-                      </p>
-                      <p className="text-xs text-green-700 mt-1">
-                        ({stats.pbOneRmWeight.toFixed(1)} kg x {stats.pbOneRmReps} reps)
-                      </p>
-                      <p className="text-xs text-green-700">
-                        On {formatDateLabel(stats.pbOneRmDate)}
-                      </p>
-                    </div>
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h3 className="text-sm font-medium text-blue-600">Trend (last 2 sessions)</h3>
-                      <div className="space-y-1 text-sm">
-                        <p className={trendColor(stats.weightTrend)}>
-                          Weight: {formatTrend(stats.weightTrend)} kg
-                        </p>
-                        <p className={trendColor(stats.volumeTrend)}>
-                          Volume: {formatTrend(stats.volumeTrend)} kg
-                        </p>
-                        <p className={trendColor(stats.oneRmTrend)}>
-                          1RM: {formatTrend(stats.oneRmTrend)} kg
-                        </p>
-                      </div>
+            {stats && (
+              <>
+                {/* Personal Bests */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-5">
+                    <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1">Max Weight (PB)</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.maxWeight.toFixed(1)}<span className="text-base font-normal text-gray-500 ml-1">kg</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{formatDateLabel(stats.pbWeightDate)}</p>
+                  </div>
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-5">
+                    <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide mb-1">Max Volume (PB)</p>
+                    <p className="text-3xl font-bold text-gray-900">{Math.round(stats.maxVolume)}<span className="text-base font-normal text-gray-500 ml-1">kg</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{formatDateLabel(stats.pbVolumeDate)}</p>
+                  </div>
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-5">
+                    <p className="text-xs font-semibold text-green-500 uppercase tracking-wide mb-1">Max 1RM est. (PB)</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.maxOneRm.toFixed(1)}<span className="text-base font-normal text-gray-500 ml-1">kg</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{stats.pbOneRmWeight.toFixed(1)} kg × {stats.pbOneRmReps} reps</p>
+                    <p className="text-xs text-gray-400">{formatDateLabel(stats.pbOneRmDate)}</p>
+                  </div>
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-5">
+                    <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-1">Sessions</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.workoutCount}</p>
+                    <p className="text-xs text-gray-400 mt-1">in selected period</p>
+                  </div>
+                </div>
+
+                {/* Trends + Last session */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Trend (last 2 sessions)</h3>
+                    <div className="space-y-3">
+                      {[
+                        { label: "Weight", value: stats.weightTrend, unit: "kg" },
+                        { label: "Volume", value: stats.volumeTrend, unit: "kg" },
+                        { label: "1RM est.", value: stats.oneRmTrend, unit: "kg" },
+                      ].map(({ label, value, unit }) => (
+                        <div key={label} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">{label}</span>
+                          <span className={`text-sm flex items-center gap-1 ${trendColor(value)}`}>
+                            {trendIcon(value)} {formatTrend(value)} {unit}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4 border">
-                      <h4 className="text-sm font-medium text-gray-700">Last Session</h4>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {stats.lastWeight.toFixed(1)} kg
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Volume: {Math.round(stats.lastVolume)} kg
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        1RM est.: {stats.lastOneRm.toFixed(1)} kg
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border">
-                      <h4 className="text-sm font-medium text-gray-700">Sessions in period</h4>
-                      <p className="text-lg font-semibold text-gray-900">{stats.workoutCount}</p>
-                      <p className="text-xs text-gray-600">For selected exercise</p>
-                    </div>
-                    <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                      <h4 className="text-sm font-medium text-amber-700">Personal Best Highlights</h4>
-                      <p className="text-sm text-amber-800">
-                        Weight PB: {stats.maxWeight.toFixed(1)} kg ({formatDateLabel(stats.pbWeightDate)})
-                      </p>
-                      <p className="text-sm text-amber-800">
-                        Volume PB: {Math.round(stats.maxVolume)} kg ({formatDateLabel(stats.pbVolumeDate)})
-                      </p>
-                      <p className="text-sm text-amber-800">
-                        1RM PB: {stats.maxOneRm.toFixed(1)} kg ({stats.pbOneRmWeight.toFixed(1)} kg x {stats.pbOneRmReps} reps) ({formatDateLabel(stats.pbOneRmDate)})
-                      </p>
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Last Session</h3>
+                    <div className="space-y-3">
+                      {[
+                        { label: "Weight", value: `${stats.lastWeight.toFixed(1)} kg` },
+                        { label: "Volume", value: `${Math.round(stats.lastVolume)} kg` },
+                        { label: "1RM est.", value: `${stats.lastOneRm.toFixed(1)} kg` },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">{label}</span>
+                          <span className="text-sm font-semibold text-gray-900">{value}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-              )}
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-md border border-white/20 p-12 text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full mx-auto mb-6 flex items-center justify-center">
+              <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
             </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              {selectedExercise
-                ? "No weight data available for the selected exercise. Start recording workouts to see your progress!"
-                : "Select an exercise to view progress"}
-            </div>
-          )}
-        </div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              {selectedExercise ? "No data for this exercise yet" : "Select an exercise to view progress"}
+            </h3>
+            <p className="text-sm text-gray-400">
+              {selectedExercise ? "Start recording workouts to see your progress charts." : "Choose a muscle group and exercise above."}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
